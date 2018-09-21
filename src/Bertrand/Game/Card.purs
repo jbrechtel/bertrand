@@ -5,6 +5,7 @@ module Bertrand.Game.Card
   , Shape(..)
   , Shading(..)
   , ShapeCount(..)
+  , blankCard
   , cardProperties
   , isValid
   , allCards
@@ -142,8 +143,9 @@ instance shapeCountOrd :: Ord ShapeCount where
 
 derive instance eqShapeCount :: Eq ShapeCount
 
-newtype Card =
-  Card CardProperties
+data Card =
+    Card CardProperties
+  | BlankCard
 
 derive instance eqCard :: Eq Card
 
@@ -154,8 +156,9 @@ type CardProperties =
   , shape :: Shape
   }
 
-cardProperties :: Card -> CardProperties
-cardProperties (Card prop) = prop
+cardProperties :: Card -> Maybe CardProperties
+cardProperties (Card prop) = Just prop
+cardProperties BlankCard = Nothing
 
 allCards :: Array Card
 allCards = do
@@ -164,6 +167,9 @@ allCards = do
   color <- enumerate
   shapeCount <- enumerate
   pure $ Card { shapeCount: shapeCount, shading: shading, color: color, shape: shape }
+
+blankCard :: Card
+blankCard = BlankCard
 
 enumerate :: forall e. Enum e => Bounded e => Array e
 enumerate = enumerateFrom (Just top) []
@@ -196,6 +202,7 @@ shapeCountToString Two = "two"
 shapeCountToString Three = "three"
 
 cardImageUrl :: Card -> String
+cardImageUrl BlankCard = "images/blank.png"
 cardImageUrl (Card c) =
      "images/"
   <> (shapeCountToString c.shapeCount)

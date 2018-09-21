@@ -11,13 +11,12 @@ module Bertrand.Game.Deck
   where
 
 import Prelude
-import Data.Array (drop, take, sortWith, delete, union, nub, length)
-import Data.Maybe (Maybe(..))
+import Data.Array (catMaybes, drop, take, sortWith, nub, length)
 import Data.Traversable (traverse)
 import Effect.Random (randomInt)
 
 import Effect (Effect)
-import Bertrand.Game.Card (Card, allCards, cardProperties)
+import Bertrand.Game.Card (Card, allCards, cardProperties, blankCard)
 
 data Deck = Deck (Array Card) (Array Card) Selection
 data Selection =
@@ -26,6 +25,7 @@ data Selection =
   | TwoCards Card Card
 
 data CardSet = CardSet Card Card Card
+data Draw = Draw Card Card Card
 
 data SelectionResult =
     NoSet Deck
@@ -43,25 +43,41 @@ selectVisibleCard deck@(Deck vis rem (TwoCards one two)) three =
        false -> NoSet deck
        true ->
          let cardSet = CardSet one two three
-             newDraw = take 3 rem
+             (Draw newOne newTwo newThree) = take3OrBlank rem
              newRemaining = drop 3 rem
-             newVis = union newDraw $ delete one
-                                    $ delete two
-                                    $ delete three vis
+             newVis = replace one newOne
+                        $ replace two newTwo
+                        $ replace three newThree vis
           in FoundSet (Deck newVis newRemaining NoCards) cardSet
+
+
+take3OrBlank :: Array Card -> Draw
+take3OrBlank cards =
+  let attempt = take 3 cards
+   in case attempt of
+        [one, two, three] -> Draw one two three
+        _                 -> Draw blankCard blankCard blankCard
+
+replace :: forall a. Eq a => a -> a -> Array a -> Array a
+replace old new items =
+  let updater c = if c == old
+                    then new
+                    else c
+   in updater <$> items
 
 isSet :: Card -> Card -> Card -> Boolean
 isSet c c' c'' =
-
-  let props = cardProperties <$> [c, c', c'']
-      colors = nub (_.color <$> props)
-      shapeCounts = nub (_.shapeCount <$> props)
-      shapes = nub (_.shape <$> props)
-      shadings = nub (_.shading <$> props)
-   in    length colors /= 2
-      && length shapeCounts /= 2
-      && length shapes /= 2
-      && length shadings /= 2
+  case catMaybes (cardProperties <$> [c, c', c'']) of
+       [] -> false
+       props ->
+         let colors = nub (_.color <$> props)
+             shapeCounts = nub (_.shapeCount <$> props)
+             shapes = nub (_.shape <$> props)
+             shadings = nub (_.shading <$> props)
+          in    length colors /= 2
+             && length shapeCounts /= 2
+             && length shapes /= 2
+             && length shadings /= 2
 
 deselectVisibleCard :: Deck -> Card -> Deck
 deselectVisibleCard deck@(Deck vis rem NoCards) _ = deck
