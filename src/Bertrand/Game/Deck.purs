@@ -1,17 +1,17 @@
 module Bertrand.Game.Deck
   ( Deck
   , CardSet
-  , SelectableCard
-  , trySet
-  , claimSet
+  , SelectionResult(..)
   , visibleCards
   , shuffledDeck
   , selectVisibleCard
+  , deselectVisibleCard
+  , isCardSelected
   )
   where
 
 import Prelude
-import Data.Array ((!!), drop, take, sortWith, delete, union)
+import Data.Array (drop, take, sortWith, delete, union)
 import Data.Maybe (Maybe(..))
 import Data.Traversable (traverse)
 import Effect.Random (randomInt)
@@ -19,41 +19,61 @@ import Effect.Random (randomInt)
 import Effect (Effect)
 import Bertrand.Game.Card (Card, allCards)
 
-data Deck = Deck (Array SelectableCard) (Array Card)
+data Deck = Deck (Array Card) (Array Card) Selection
+data Selection =
+    NoCards
+  | OneCard Card
+  | TwoCards Card Card
+
 data CardSet = CardSet Card Card Card
 
-data SelectableCard =
-    Selected Card
-  | NotSelected Card
+data SelectionResult =
+    NoSet Deck
+  | FoundSet Deck CardSet
 
-selectVisibleCard :: Deck -> Card -> Deck
-selectVisibleCard (Deck vis rem) card =
-  let updater sCard = case selectedEqualsCard sCard card of
-                        true -> selectCard sCard
-                        false -> sCard
-      newVis = updater <$> vis
-   in Deck newVis rem
+selectVisibleCard :: Deck -> Card -> SelectionResult
+selectVisibleCard (Deck vis rem NoCards) card =
+  NoSet $ Deck vis rem (OneCard card)
 
-selectedEqualsCard :: SelectableCard -> Card -> Boolean
-selectedEqualsCard (Selected card) card' = card == card'
-selectedEqualsCard (NotSelected card) card' = card == card'
+selectVisibleCard (Deck vis rem (OneCard sel)) card =
+  NoSet $ Deck vis rem (TwoCards sel card)
 
-selectCard :: SelectableCard -> SelectableCard
-selectCard (Selected card) = Selected card
-selectCard (NotSelected card) = Selected card
+selectVisibleCard deck@(Deck vis rem (TwoCards one two)) three =
+  case isSet one two three of
+       false -> NoSet deck
+       true ->
+         let cardSet = CardSet one two three
+             newDraw = take 3 rem
+             newRemaining = drop 3 rem
+             newVis = union newDraw $ delete one
+                                    $ delete two
+                                    $ delete three vis
+          in FoundSet (Deck newVis newRemaining NoCards) cardSet
 
-trySet :: Card -> Card -> Card -> Maybe CardSet
-trySet c c' c'' = Just $ CardSet c c' c''
+isSet :: Card -> Card -> Card -> Boolean
+isSet c c' c'' = true
 
-claimSet :: CardSet -> Deck -> Deck
-claimSet (CardSet one two three) (Deck visible remaining) =
-  let newDraw = NotSelected <$> take 3 remaining
-      newRemaining = drop 3 remaining
-      newVis = union newDraw $ delete one $ delete two $ delete three visible
-   in Deck newVis newRemaining
+deselectVisibleCard :: Deck -> Card -> Deck
+deselectVisibleCard deck@(Deck vis rem NoCards) _ = deck
 
-   -- THIS MAY BE BAD BECAUSE CardSet doesn't have SelectableCards. UGH
-   -- probably fine, actually
+deselectVisibleCard deck@(Deck vis rem (OneCard c)) card =
+  if c /= card
+    then deck
+    else Deck vis rem NoCards
+
+deselectVisibleCard deck@(Deck vis rem (TwoCards c c')) card =
+  if c == card
+    then Deck vis rem (OneCard c')
+    else if c' == card
+           then Deck vis rem (OneCard c)
+           else deck
+
+isCardSelected :: Deck -> Card -> Boolean
+isCardSelected (Deck _ _ sel) card =
+  case sel of
+       OneCard c -> card == c
+       TwoCards c c' -> card == c || card == c'
+       _ -> false
 
 shuffledDeck :: Effect Deck
 shuffledDeck = do
@@ -61,7 +81,7 @@ shuffledDeck = do
   let shuffled = toCard <$> sortWith toIndex sortable
       visible = take 12 shuffled
       remaining = drop 12 shuffled
-  pure $ Deck (NotSelected <$> visible) remaining
+  pure $ Deck visible remaining NoCards
 
 mkSortableCard :: Card -> Effect SortableCard
 mkSortableCard card = do
@@ -76,5 +96,5 @@ toIndex (SortableCard _ i) = i
 
 data SortableCard = SortableCard Card Int
 
-visibleCards :: Deck -> Array SelectableCard
-visibleCards (Deck visible _) = visible
+visibleCards :: Deck -> Array Card
+visibleCards (Deck visible _ _) = visible
