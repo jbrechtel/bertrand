@@ -11,13 +11,13 @@ module Bertrand.Game.Deck
   where
 
 import Prelude
-import Data.Array (drop, take, sortWith, delete, union)
+import Data.Array (drop, take, sortWith, delete, union, nub, length)
 import Data.Maybe (Maybe(..))
 import Data.Traversable (traverse)
 import Effect.Random (randomInt)
 
 import Effect (Effect)
-import Bertrand.Game.Card (Card, allCards)
+import Bertrand.Game.Card (Card, allCards, cardProperties)
 
 data Deck = Deck (Array Card) (Array Card) Selection
 data Selection =
@@ -51,7 +51,17 @@ selectVisibleCard deck@(Deck vis rem (TwoCards one two)) three =
           in FoundSet (Deck newVis newRemaining NoCards) cardSet
 
 isSet :: Card -> Card -> Card -> Boolean
-isSet c c' c'' = true
+isSet c c' c'' =
+
+  let props = cardProperties <$> [c, c', c'']
+      colors = nub (_.color <$> props)
+      shapeCounts = nub (_.shapeCount <$> props)
+      shapes = nub (_.shape <$> props)
+      shadings = nub (_.shading <$> props)
+   in    length colors /= 2
+      && length shapeCounts /= 2
+      && length shapes /= 2
+      && length shadings /= 2
 
 deselectVisibleCard :: Deck -> Card -> Deck
 deselectVisibleCard deck@(Deck vis rem NoCards) _ = deck

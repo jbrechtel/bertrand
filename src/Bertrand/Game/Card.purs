@@ -5,6 +5,7 @@ module Bertrand.Game.Card
   , Shape(..)
   , Shading(..)
   , ShapeCount(..)
+  , cardProperties
   , isValid
   , allCards
   , cardImageUrl
@@ -152,6 +153,9 @@ type CardProperties =
   , color :: Color
   , shape :: Shape
   }
+
+cardProperties :: Card -> CardProperties
+cardProperties (Card prop) = prop
 
 allCards :: Array Card
 allCards = do
