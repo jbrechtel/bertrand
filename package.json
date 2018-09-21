@@ -1,0 +1,9 @@
+{
+  "private": true,
+  "scripts": {
+    "build": "pulp build --to dist/bertrand.js"
+  },
+  "devDependencies": {
+    "pulp": "^11.0.0"
+  }
+}
