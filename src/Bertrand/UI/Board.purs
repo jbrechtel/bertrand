@@ -8,9 +8,8 @@ import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
 
-import Bertrand.Game.Card (Card)
+import Bertrand.Game.Card (Card, cardImageUrl)
 import Bertrand.Game.Deck as Deck
-import Bertrand.UI.Card (renderCard)
 
 type State = { deck :: Deck.Deck
              , sets :: Array Deck.CardSet
@@ -96,7 +95,7 @@ renderSelectableCard deck card =
    in HH.div [ HP.class_ (HH.ClassName cssClass)
              , HE.onClick (HE.input_ (event card))
              ]
-             [ renderCard card
+             [ HH.img [ HP.src $ cardImageUrl card ]
              ]
 
 eval :: forall m. Query ~> H.ComponentDSL State Query Message m
