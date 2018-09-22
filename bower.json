@@ -4,5 +4,8 @@
   "dependencies": {
     "purescript-halogen": "*",
     "purescript-random": "^4.0.0"
+  },
+  "devDependencies": {
+    "purescript-psci-support": "^4.0.0"
   }
 }

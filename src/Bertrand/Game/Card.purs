@@ -16,7 +16,6 @@ import Prelude
 import Data.Array ((:))
 import Data.Enum (class Enum, succ)
 import Data.Maybe (Maybe(..))
-import Data.Ordering (Ordering(..))
 import Data.Ord (class Ord)
 
 data Color =

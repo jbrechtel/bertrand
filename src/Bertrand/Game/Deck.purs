@@ -2,17 +2,21 @@ module Bertrand.Game.Deck
   ( Deck
   , CardSet
   , SelectionResult(..)
+  , MoreCardsResult(..)
   , visibleCards
   , shuffledDeck
   , selectVisibleCard
   , deselectVisibleCard
   , isCardSelected
+  , remainingCards
+  , askForMoreCards
   )
   where
 
 import Prelude
-import Data.Array (catMaybes, drop, take, sortWith, nub, length)
+import Data.Array ((:), catMaybes, delete, drop, take, sortWith, nub, length)
 import Data.Traversable (traverse)
+import Data.Maybe (Maybe(..))
 import Effect.Random (randomInt)
 
 import Effect (Effect)
@@ -26,10 +30,40 @@ data Selection =
 
 data CardSet = CardSet Card Card Card
 data Draw = Draw Card Card Card
+data MoreCardsResult =
+    Fine Deck
+  | SetsVisible
 
 data SelectionResult =
     NoSet Deck
   | FoundSet Deck CardSet
+
+data VisibleState =
+    Normal
+  | Expanded
+
+askForMoreCards :: Deck -> MoreCardsResult
+askForMoreCards (Deck vis rem sel) =
+  case visibleSetCount vis of
+       0 -> let (Draw one two three) = take3OrBlank rem
+              in Fine $ Deck (one : two : three : vis) (drop 3 rem) sel
+       _ -> SetsVisible
+
+remainingCards :: Deck -> Array Card
+remainingCards (Deck _ rem _) = rem
+
+visibleSetCount :: Array Card -> Int
+visibleSetCount cards = (length $ catMaybes $ maybeVisibleSets cards) / 3
+
+maybeVisibleSets :: Array Card -> Array (Maybe CardSet)
+maybeVisibleSets cards = do
+  card <- cards
+  card2 <- delete card cards
+  card3 <- delete card2 $ delete card cards
+
+  case isSet card card2 card3 of
+       true -> pure $ Just $ CardSet card card2 card3
+       false -> pure Nothing
 
 selectVisibleCard :: Deck -> Card -> SelectionResult
 selectVisibleCard (Deck vis rem NoCards) card =
@@ -42,14 +76,25 @@ selectVisibleCard deck@(Deck vis rem (TwoCards one two)) three =
   case isSet one two three of
        false -> NoSet deck
        true ->
-         let cardSet = CardSet one two three
-             (Draw newOne newTwo newThree) = take3OrBlank rem
-             newRemaining = drop 3 rem
-             newVis = replace one newOne
-                        $ replace two newTwo
-                        $ replace three newThree vis
-          in FoundSet (Deck newVis newRemaining NoCards) cardSet
+         case visibleState deck of
+              Normal -> let cardSet = CardSet one two three
+                            (Draw newOne newTwo newThree) = take3OrBlank rem
+                            newRemaining = drop 3 rem
+                            newVis = replace one newOne
+                                        $ replace two newTwo
+                                        $ replace three newThree vis
+                         in FoundSet (Deck newVis newRemaining NoCards) cardSet
+              Expanded -> let cardSet = CardSet one two three
+                              newVis = delete one
+                                         $ delete two
+                                         $ delete three vis
+                           in FoundSet (Deck newVis rem NoCards) cardSet
 
+visibleState :: Deck -> VisibleState
+visibleState (Deck vis _ _) =
+  if length vis == 12
+    then Normal
+    else Expanded
 
 take3OrBlank :: Array Card -> Draw
 take3OrBlank cards =
