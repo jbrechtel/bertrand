@@ -14,6 +14,7 @@ import Bertrand.Game.Deck as Deck
 type State = { deck :: Deck.Deck
              , sets :: Array Deck.CardSet
              , warning :: Maybe String
+             , imageRootUrl :: String
              }
 
 data Query a =
@@ -24,20 +25,24 @@ data Query a =
 
 data Message = Message
 
-component :: forall m. Deck.Deck -> H.Component HH.HTML Query Unit Message m
-component deck =
+component :: forall m.
+             String
+          -> Deck.Deck
+          -> H.Component HH.HTML Query Unit Message m
+component imageRootUrl deck =
   H.component
-    { initialState: const $ initialState deck
+    { initialState: const $ initialState imageRootUrl deck
     , render
     , eval
     , receiver: const Nothing
     }
 
-initialState :: Deck.Deck -> State
-initialState deck =
+initialState :: String -> Deck.Deck -> State
+initialState imageRootUrl deck =
   { deck: deck
   , sets: []
   , warning: Nothing
+  , imageRootUrl: imageRootUrl
   }
 
 render :: State -> H.ComponentHTML Query
@@ -46,7 +51,7 @@ render state =
         [ HH.div [ HP.class_ (HH.ClassName "cell small-8") ]
             [ renderGameStatus state
             , HH.div [ HP.class_ (HH.ClassName "grid-x grid-margin-x medium-up-3") ] $
-                (renderSelectableCard state.deck) <$> (Deck.visibleCards state.deck)
+                (renderSelectableCard state) <$> (Deck.visibleCards state.deck)
             ]
         , maybe (HH.text "") renderWarning state.warning
         , HH.div [ HP.class_ (HH.ClassName "cell small-2") ]
@@ -84,18 +89,19 @@ renderGameStatus state =
           ]
       ]
 
-renderSelectableCard :: forall p. Deck.Deck -> Card -> HH.HTML p (Query Unit)
-renderSelectableCard deck card =
-  let cssClass = case Deck.isCardSelected deck card of
+renderSelectableCard :: forall p. State -> Card -> HH.HTML p (Query Unit)
+renderSelectableCard state card =
+  let selected = Deck.isCardSelected state.deck card
+      cssClass = case selected of
                    true -> "cell selected"
                    false -> "cell"
-      event = case Deck.isCardSelected deck card of
+      event = case selected of
                    true -> Deselect
                    false -> Select
    in HH.div [ HP.class_ (HH.ClassName cssClass)
              , HE.onClick (HE.input_ (event card))
              ]
-             [ HH.img [ HP.src $ cardImageUrl card ]
+             [ HH.img [ HP.src $ cardImageUrl state.imageRootUrl card ]
              ]
 
 eval :: forall m. Query ~> H.ComponentDSL State Query Message m

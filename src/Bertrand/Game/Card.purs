@@ -16,7 +16,6 @@ import Prelude
 import Data.Array ((:))
 import Data.Enum (class Enum, succ)
 import Data.Maybe (Maybe(..))
-import Data.Ord (class Ord)
 
 data Color =
     Red
@@ -200,10 +199,11 @@ shapeCountToString One = "one"
 shapeCountToString Two = "two"
 shapeCountToString Three = "three"
 
-cardImageUrl :: Card -> String
-cardImageUrl BlankCard = "images/blank.png"
-cardImageUrl (Card c) =
-     "images/"
+cardImageUrl :: String -> Card -> String
+cardImageUrl root BlankCard = root <> "images/blank.png"
+cardImageUrl root (Card c) =
+     root
+  <> "/images/"
   <> (shapeCountToString c.shapeCount)
   <> "-"
   <> (shadingToString c.shading)
