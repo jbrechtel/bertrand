@@ -1,3 +1,4 @@
 #!/bin/sh
 
+bower install
 pulp build
