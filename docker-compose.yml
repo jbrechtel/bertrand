@@ -7,6 +7,16 @@ services:
       - .:/home/pureuser/bertrand
 
     working_dir: /home/pureuser/bertrand
-    command: ./build
+    command: ./watch
     tty: true
 
+  serve:
+    build: containers/http
+    ports:
+      - 9900:9900
+
+    volumes:
+      - ./dist:/var/www
+
+    working_dir: /var/www
+    command: darkhttpd . --port 9900

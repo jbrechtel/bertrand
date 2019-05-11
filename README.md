@@ -7,3 +7,14 @@ I made this for my own sanity so that I can practice the game from my Android ph
 I'm using Purescript 0.12.0 ,Halogen 3.1.3 and Foundation 6
 
 I am explicitly *not* distributing the original graphics with this, though I may generate some at one point.
+
+
+### Development
+
+To continually build and browserify the Purescript code run
+
+`docker-compose up`
+
+The game will be accessible via
+
+http://localhost:9900
