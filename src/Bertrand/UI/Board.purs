@@ -1,7 +1,7 @@
 module Bertrand.UI.Board where
 
 import Prelude
-import Data.Array ((:), length)
+import Data.Array ((:), length, slice)
 import Data.Maybe (Maybe(..), maybe)
 import Halogen as H
 import Halogen.HTML as HH
@@ -47,11 +47,19 @@ initialState imageRootUrl deck =
 
 render :: State -> H.ComponentHTML Query
 render state =
-    HH.div_
-        [ HH.div [ HP.class_ (HH.ClassName "cell small-8") ]
+    HH.div [ HP.class_ (HH.ClassName "section") ]
+        [ HH.div [ HP.class_ (HH.ClassName "container") ]
             [ renderGameStatus state
-            , HH.div [ HP.class_ (HH.ClassName "grid-x grid-margin-x medium-up-3") ] $
-                (renderSelectableCard state) <$> (Deck.visibleCards state.deck)
+            , HH.div [ HP.class_ (HH.ClassName "is-ancestor") ]
+                [ HH.div [ HP.class_ (HH.ClassName "tile is-parent") ] $
+                    (renderSelectableCard state) <$> (slice 0 3 $ Deck.visibleCards state.deck)
+                , HH.div [ HP.class_ (HH.ClassName "tile is-parent") ] $
+                    (renderSelectableCard state) <$> (slice 3 6 $ Deck.visibleCards state.deck)
+                , HH.div [ HP.class_ (HH.ClassName "tile is-parent") ] $
+                    (renderSelectableCard state) <$> (slice 6 9 $ Deck.visibleCards state.deck)
+                , HH.div [ HP.class_ (HH.ClassName "tile is-parent") ] $
+                    (renderSelectableCard state) <$> (slice 9 12 $ Deck.visibleCards state.deck)
+                ]
             ]
         , maybe (HH.text "") renderWarning state.warning
         , HH.div [ HP.class_ (HH.ClassName "cell small-2") ]
@@ -78,12 +86,12 @@ renderWarning warning =
 
 renderGameStatus :: forall p. State -> HH.HTML p (Query Unit)
 renderGameStatus state =
-  HH.div [ HP.class_ (HH.ClassName "grid-x") ]
-      [ HH.div [ HP.class_ (HH.ClassName "cell small-6") ]
+  HH.div [ HP.class_ (HH.ClassName "columns") ]
+      [ HH.div [ HP.class_ (HH.ClassName "column") ]
           [ HH.text "Found sets: "
           , HH.text $ show $ length state.sets
           ]
-      , HH.div [ HP.class_ (HH.ClassName "cell small-6") ]
+      , HH.div [ HP.class_ (HH.ClassName "column") ]
           [ HH.text "Remaining cards: "
           , HH.text $ show $ length $ Deck.remainingCards state.deck
           ]
@@ -93,8 +101,8 @@ renderSelectableCard :: forall p. State -> Card -> HH.HTML p (Query Unit)
 renderSelectableCard state card =
   let selected = Deck.isCardSelected state.deck card
       cssClass = case selected of
-                   true -> "cell selected"
-                   false -> "cell"
+                   true -> "tile is-child is-4 selected"
+                   false -> "tile is-child is-4"
       event = case selected of
                    true -> Deselect
                    false -> Select
