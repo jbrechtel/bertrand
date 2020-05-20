@@ -2,3 +2,4 @@ bower_components
 output
 node_modules
 .psci_modules
+.spago

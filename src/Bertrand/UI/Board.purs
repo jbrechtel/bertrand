@@ -17,24 +17,24 @@ type State = { deck :: Deck.Deck
              , imageRootUrl :: String
              }
 
-data Query a =
-    Select Card a
-  | Deselect Card a
-  | AskForMoreCards a
-  | DismissWarning a
+data Action =
+    Select Card
+  | Deselect Card
+  | AskForMoreCards
+  | DismissWarning
 
 data Message = Message
 
-component :: forall m.
+component :: forall q m.
              String
           -> Deck.Deck
-          -> H.Component HH.HTML Query Unit Message m
+          -> H.Component HH.HTML q Unit Message m
 component imageRootUrl deck =
-  H.component
+  H.mkComponent
     { initialState: const $ initialState imageRootUrl deck
-    , render
-    , eval
-    , receiver: const Nothing
+    , render: render
+    , eval: H.mkEval $ H.defaultEval { handleAction = action
+                                     }
     }
 
 initialState :: String -> Deck.Deck -> State
@@ -45,7 +45,7 @@ initialState imageRootUrl deck =
   , imageRootUrl: imageRootUrl
   }
 
-render :: State -> H.ComponentHTML Query
+render :: forall m s. State -> H.ComponentHTML Action s m
 render state =
     HH.div [ HP.class_ (HH.ClassName "section") ]
         [ HH.div [ HP.class_ (HH.ClassName "container") ]
@@ -65,26 +65,26 @@ render state =
         , HH.div [ HP.class_ (HH.ClassName "cell small-2") ]
           [ HH.button [ HP.class_ (HH.ClassName "primary button")
                       , HP.type_ HP.ButtonButton
-                      , HE.onClick (HE.input_ AskForMoreCards)
+                      , HE.onClick $ \_ -> Just AskForMoreCards
                       ]
                 [ HH.text "No Set!"
                 ]
           ]
         ]
 
-renderWarning :: forall p. String -> HH.HTML p (Query Unit)
+renderWarning :: forall p. String -> HH.HTML p Action
 renderWarning warning =
   HH.div [ HP.class_ (HH.ClassName "grid-x") ]
       [ HH.div [ HP.class_ (HH.ClassName "cell small-12") ]
             [ HH.div [ HP.class_ (HH.ClassName "callout warning")
-                     , HE.onClick (HE.input_ DismissWarning)
+                     , HE.onClick $ \_ -> Just DismissWarning
                      ]
                   [ HH.text warning
                   ]
             ]
       ]
 
-renderGameStatus :: forall p. State -> HH.HTML p (Query Unit)
+renderGameStatus :: forall p. State -> HH.HTML p Action
 renderGameStatus state =
   HH.div [ HP.class_ (HH.ClassName "columns") ]
       [ HH.div [ HP.class_ (HH.ClassName "column") ]
@@ -97,7 +97,7 @@ renderGameStatus state =
           ]
       ]
 
-renderSelectableCard :: forall p. State -> Card -> HH.HTML p (Query Unit)
+renderSelectableCard :: forall p. State -> Card -> HH.HTML p Action
 renderSelectableCard state card =
   let selected = Deck.isCardSelected state.deck card
       cssClass = case selected of
@@ -107,35 +107,30 @@ renderSelectableCard state card =
                    true -> Deselect
                    false -> Select
    in HH.div [ HP.class_ (HH.ClassName cssClass)
-             , HE.onClick (HE.input_ (event card))
+             , HE.onClick $ \_ -> Just $ event card
              ]
              [ HH.img [ HP.src $ cardImageUrl state.imageRootUrl card ]
              ]
 
-eval :: forall m. Query ~> H.ComponentDSL State Query Message m
-eval (Select card next) = do
+action :: forall m s. Action -> H.HalogenM State Action s Message m Unit
+action (Select card) = do
   state <- H.get
   case Deck.selectVisibleCard state.deck card of
        Deck.NoSet d -> H.put $ state { deck = d }
        Deck.FoundSet d s -> H.put $ state { deck = d, sets = s : state.sets }
-  pure next
 
-eval (Deselect card next) = do
+action (Deselect card) = do
   state <- H.get
   H.put $ state { deck = Deck.deselectVisibleCard state.deck card }
-  pure next
 
-eval (AskForMoreCards next) = do
+action AskForMoreCards = do
   state <- H.get
   case Deck.askForMoreCards state.deck of
        Deck.Fine deck -> H.put $ state { deck = deck }
        Deck.SetsVisible -> H.modify_ $ showWarning "There are still sets visible!"
 
-  pure next
-
-eval (DismissWarning next) = do
+action DismissWarning = do
   H.modify_ hideWarning
-  pure next
 
 showWarning :: String -> State -> State
 showWarning warning state = state { warning = Just warning }
